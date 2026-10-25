@@ -1,4 +1,3 @@
-import crypto from "node:crypto";
 import fs from "node:fs";
 import fsp from "node:fs/promises";
 import http from "node:http";
@@ -9,12 +8,14 @@ const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const INDEX_PATH = path.join(ROOT, "index.html");
 const PORT = Number(process.env.PORT) || 10000;
 const FAMILY_ID = process.env.FAMILY_ID || "our-family";
-const ACCESS_TOKEN = process.env.ACCESS_TOKEN || "";
-const COOKIE_NAME = "star_family_session";
 const DEVICE_COOKIE = "star_family_device";
-const SESSION_VALUE = ACCESS_TOKEN
-  ? crypto.createHmac("sha256", ACCESS_TOKEN).update(FAMILY_ID).digest("hex")
-  : "";
+const ASSET_FILES = {
+  "/manifest.webmanifest": { path: path.join(ROOT, "manifest.webmanifest"), type: "application/manifest+json; charset=utf-8" },
+  "/icon-180.png": { path: path.join(ROOT, "icon-180.png"), type: "image/png" },
+  "/icon-192.png": { path: path.join(ROOT, "icon-192.png"), type: "image/png" },
+  "/icon-512.png": { path: path.join(ROOT, "icon-512.png"), type: "image/png" },
+  "/sw.js": { path: path.join(ROOT, "sw.js"), type: "text/javascript; charset=utf-8" }
+};
 const TIME_ZONE = "Asia/Shanghai";
 const MAX_BODY_BYTES = 8 * 1024 * 1024;
 const MAX_HISTORY = 3000;
@@ -155,29 +156,6 @@ function mergeState(currentValue, incomingValue) {
 
   delete merged.version;
   return merged;
-}
-
-function parseCookies(header = "") {
-  return Object.fromEntries(
-    header
-      .split(";")
-      .map((item) => item.trim())
-      .filter(Boolean)
-      .map((item) => {
-        const index = item.indexOf("=");
-        if (index < 0) return [item, ""];
-        return [decodeURIComponent(item.slice(0, index)), decodeURIComponent(item.slice(index + 1))];
-      })
-  );
-}
-
-function isAuthorized(request) {
-  if (!ACCESS_TOKEN) return true;
-  return parseCookies(request.headers.cookie || "")[COOKIE_NAME] === SESSION_VALUE;
-}
-
-function entryCookie(value, maxAge = 31536000) {
-  return `${COOKIE_NAME}=${encodeURIComponent(value)}; Path=/; Max-Age=${maxAge}; HttpOnly; SameSite=Lax${process.env.NODE_ENV === "production" ? "; Secure" : ""}`;
 }
 
 function deviceCookie(value) {
@@ -326,27 +304,6 @@ async function serveIndex(response) {
   response.end(html);
 }
 
-function unauthorizedPage(response) {
-  const html = `<!doctype html>
-<html lang="zh-CN">
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>星星钱罐</title>
-<style>
-body{margin:0;min-height:100vh;display:grid;place-items:center;background:#eef9f1;color:#23443c;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif}
-main{width:min(430px,calc(100% - 40px));padding:28px;border:1px solid #cae8d7;border-radius:8px;background:#fffdf7}
-h1{margin:0 0 10px;font-size:25px}p{margin:0;color:#60736b;font-size:14px;line-height:1.7}
-</style>
-<main><h1>请从专用入口打开</h1><p>请使用发送到手机或 iPad 的星星钱罐专用地址。首次打开后会记住这台设备。</p></main>
-</html>`;
-  response.writeHead(403, {
-    "Content-Type": "text/html; charset=utf-8",
-    "Content-Length": Buffer.byteLength(html),
-    "Cache-Control": "no-store"
-  });
-  response.end(html);
-}
-
 function chooseDevice(request, url) {
   const requested = url.searchParams.get("device");
   if (requested === "ipad" || requested === "phone") return requested;
@@ -372,52 +329,57 @@ async function handleRequest(request, response) {
   }
 
   if (pathname === "/api/state" && request.method === "GET") {
-    if (!isAuthorized(request)) {
-      sendJson(response, 401, { ok: false, error: "unauthorized" });
-      return;
-    }
     const result = await loadState();
     sendJson(response, 200, { ok: true, ...result });
     return;
   }
 
   if (pathname === "/api/sync" && request.method === "POST") {
-    if (!isAuthorized(request)) {
-      sendJson(response, 401, { ok: false, error: "unauthorized" });
-      return;
-    }
     const body = await readJsonBody(request);
     const result = await syncState(body.state);
     sendJson(response, 200, { ok: true, ...result });
     return;
   }
 
-  if (pathname === "/enter" || pathname === "/ipad" || pathname === "/phone") {
-    const suppliedKey = url.searchParams.get("key");
-    if (ACCESS_TOKEN && suppliedKey === ACCESS_TOKEN) {
-      const device = pathname === "/enter" ? chooseDevice(request, url) : pathname.slice(1);
+  if (pathname === "/enter") {
+    const device = chooseDevice(request, url);
+    response.writeHead(302, {
+      Location: device === "ipad" ? "/ipad" : "/phone",
+      "Set-Cookie": deviceCookie(device),
+      "Cache-Control": "no-store"
+    });
+    response.end();
+    return;
+  }
+
+  if (pathname === "/" || pathname === "/ipad" || pathname === "/phone") {
+    if (pathname === "/") {
+      const device = chooseDevice(request, url);
       response.writeHead(302, {
         Location: device === "ipad" ? "/ipad" : "/phone",
-        "Set-Cookie": [entryCookie(SESSION_VALUE), deviceCookie(device)],
+        "Set-Cookie": deviceCookie(device),
         "Cache-Control": "no-store"
       });
       response.end();
       return;
     }
+    await serveIndex(response);
+    return;
   }
 
-  if (pathname === "/" || pathname === "/ipad" || pathname === "/phone") {
-    if (!isAuthorized(request)) {
-      unauthorizedPage(response);
+  if (ASSET_FILES[pathname]) {
+    const asset = ASSET_FILES[pathname];
+    const body = await fsp.readFile(asset.path).catch(() => null);
+    if (!body) {
+      sendText(response, 404, "Not found");
       return;
     }
-    if (pathname === "/" && ACCESS_TOKEN) {
-      const device = parseCookies(request.headers.cookie || "")[DEVICE_COOKIE];
-      response.writeHead(302, { Location: device === "ipad" ? "/ipad" : "/phone", "Cache-Control": "no-store" });
-      response.end();
-      return;
-    }
-    await serveIndex(response);
+    response.writeHead(200, {
+      "Content-Type": asset.type,
+      "Content-Length": body.length,
+      "Cache-Control": pathname === "/sw.js" ? "no-cache" : "public, max-age=86400"
+    });
+    response.end(body);
     return;
   }
 
@@ -427,10 +389,6 @@ async function handleRequest(request, response) {
   }
 
   if (!path.extname(pathname)) {
-    if (!isAuthorized(request)) {
-      unauthorizedPage(response);
-      return;
-    }
     await serveIndex(response);
     return;
   }

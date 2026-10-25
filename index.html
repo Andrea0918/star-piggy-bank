@@ -3,11 +3,14 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#e9f8ef">
+  <meta name="theme-color" content="#e3f7eb">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="星星钱罐">
+  <meta name="application-name" content="星星钱罐">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" sizes="180x180" href="/icon-180.png">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23ffe083'/%3E%3Cpath d='M32 8l6 18 19 1-15 12 5 19-15-10-15 10 5-19-15-12 19-1z' fill='%23fff7d8'/%3E%3C/svg%3E">
   <title>星星钱罐 · 我的零花钱小助手</title>
   <style>
@@ -5831,6 +5834,12 @@
       saveState();
       renderAll();
       initCloudSync();
+
+      if ("serviceWorker" in navigator && window.isSecureContext) {
+        navigator.serviceWorker.register("/sw.js").catch((error) => {
+          console.warn("App 离线缓存注册失败。", error);
+        });
+      }
 
       window.addEventListener("beforeunload", () => {
         if (!cloudEnabled || !cloudDirty) return;

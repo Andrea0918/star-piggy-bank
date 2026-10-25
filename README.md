@@ -14,6 +14,7 @@
 - iPad、手机和桌面自适应布局
 - `/ipad` 和 `/phone` 两个入口，共用同一份云端数据
 - 断网时先保存本机，恢复网络后自动合并同步
+- 已配置主屏幕 App 图标、启动名称和独立窗口模式
 
 ## 本地使用
 
@@ -22,14 +23,14 @@
 连接 PostgreSQL：
 
 ```bash
-DATABASE_URL="postgresql://..." ACCESS_TOKEN="自定义访问密钥" npm start
+DATABASE_URL="postgresql://..." npm start
 ```
 
-首次访问：
+访问：
 
 ```text
-http://localhost:10000/enter?key=自定义访问密钥&device=ipad
-http://localhost:10000/enter?key=自定义访问密钥&device=phone
+http://localhost:10000/ipad
+http://localhost:10000/phone
 ```
 
 ## 部署
@@ -37,7 +38,6 @@ http://localhost:10000/enter?key=自定义访问密钥&device=phone
 仓库包含 `render.yaml`，用于创建 Node Web Service 和 PostgreSQL 数据库。线上服务必须设置：
 
 - `DATABASE_URL`
-- `ACCESS_TOKEN`
 - `FAMILY_ID`
 - `NODE_ENV=production`
 
