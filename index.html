@@ -8,6 +8,7 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="星星钱罐">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23ffe083'/%3E%3Cpath d='M32 8l6 18 19 1-15 12 5 19-15-10-15 10 5-19-15-12 19-1z' fill='%23fff7d8'/%3E%3C/svg%3E">
   <title>星星钱罐 · 我的零花钱小助手</title>
   <style>
     :root {
@@ -3032,6 +3033,59 @@
       font-variant-numeric: tabular-nums;
     }
 
+    .sync-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      min-height: 30px;
+      padding: 5px 9px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.8);
+      color: var(--muted);
+      font-size: 9px;
+      font-weight: 750;
+      white-space: nowrap;
+    }
+
+    .sync-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #b8c3bc;
+    }
+
+    .sync-pill.online {
+      border-color: #c9e9d7;
+      background: var(--mint);
+      color: var(--mint-deep);
+    }
+
+    .sync-pill.online .sync-dot {
+      background: var(--mint-strong);
+      box-shadow: 0 0 0 3px rgba(79, 175, 128, 0.12);
+    }
+
+    .sync-pill.syncing .sync-dot {
+      background: #d5a923;
+      animation: pulse-sync 1s ease-in-out infinite;
+    }
+
+    .sync-pill.error {
+      border-color: #f2cdcd;
+      background: var(--rose);
+      color: var(--rose-deep);
+    }
+
+    .sync-pill.error .sync-dot {
+      background: #cf6d6d;
+    }
+
+    @keyframes pulse-sync {
+      0%, 100% { opacity: 0.4; transform: scale(0.8); }
+      50% { opacity: 1; transform: scale(1.1); }
+    }
+
     .profile-chip {
       min-width: 0;
       min-height: 44px;
@@ -3507,6 +3561,16 @@
         padding: 3px;
       }
 
+      .sync-pill {
+        width: 30px;
+        padding: 0;
+        justify-content: center;
+      }
+
+      .sync-pill #syncText {
+        display: none;
+      }
+
       .profile-chip .avatar {
         width: 34px;
         height: 34px;
@@ -3559,6 +3623,91 @@
       .add-task-button .btn-label {
         display: none;
       }
+    }
+
+    .entry-phone .app {
+      width: min(100% - 22px, 620px);
+    }
+
+    .entry-phone .home-summary,
+    .entry-phone .summary-grid,
+    .entry-phone .settings-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .entry-phone .goal-panel {
+      grid-column: auto;
+    }
+
+    .entry-phone .compact-wallet {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 2px 10px;
+      align-items: center;
+      min-height: 0;
+      padding: 10px 13px;
+    }
+
+    .entry-phone .compact-wallet .wallet-head {
+      grid-column: 1;
+      grid-row: 1;
+    }
+
+    .entry-phone .compact-wallet .wallet-amount {
+      grid-column: 1;
+      grid-row: 2;
+      margin: 0;
+      font-size: 28px;
+    }
+
+    .entry-phone .compact-wallet .wallet-sub {
+      display: none;
+    }
+
+    .entry-phone .compact-wallet .mini-stats {
+      grid-column: 2;
+      grid-row: 1 / span 2;
+      grid-template-columns: repeat(3, auto);
+      width: auto;
+      margin: 0;
+    }
+
+    .entry-phone .compact-wallet .mini-stat {
+      min-width: 48px;
+      padding: 6px 7px;
+    }
+
+    .entry-phone .task-progress {
+      grid-template-columns: minmax(0, 1fr) auto;
+    }
+
+    .entry-phone .task-progress .level-pill {
+      display: none;
+    }
+
+    .entry-phone #rewardTasks,
+    .entry-phone #penaltyTasks,
+    .entry-phone .wish-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .entry-phone .bill-overview {
+      grid-template-columns: 1fr;
+    }
+
+    .entry-phone .bill-total,
+    .entry-phone .bill-stat:last-child {
+      grid-column: auto;
+    }
+
+    .entry-phone .view:not(#view-home) .page-heading {
+      align-items: flex-start;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .entry-phone .view:not(#view-home) .page-heading h1 {
+      font-size: 27px;
     }
   </style>
 </head>
@@ -3673,6 +3822,11 @@
         <span>零花钱</span>
         <strong id="headerBalance">¥28</strong>
       </button>
+
+      <span class="sync-pill" id="syncPill" title="正在使用本机数据">
+        <span class="sync-dot" aria-hidden="true"></span>
+        <span id="syncText">本机</span>
+      </span>
 
       <button class="profile-chip" type="button" data-action="edit-profile" aria-label="修改名字和头像">
         <span id="headerAvatar"></span>
@@ -3984,7 +4138,7 @@
 
             <div class="data-note">
               <svg class="icon icon-sm"><use href="#i-info"></use></svg>
-              <span>名字、账单和愿望都会保存在这台设备的浏览器里。清除浏览器数据前记得先确认。</span>
+              <span>名字、账单和愿望会先保存在这台设备，并在联网时同步到家庭共享账本。</span>
             </div>
           </div>
 
@@ -4180,7 +4334,10 @@
           settings: {
             sound: true,
             animations: true
-          }
+          },
+          deletedTaskIds: [],
+          deletedWishIds: [],
+          deletedTransactionIds: []
         };
       };
 
@@ -4192,6 +4349,34 @@
       let toastTimer = null;
       let toastUndo = null;
       let lastFocusedElement = null;
+      let cloudSyncTimer = null;
+      let cloudPollTimer = null;
+      let cloudSyncBusy = false;
+      let cloudVersion = 0;
+      let cloudEnabled = false;
+      let cloudDirty = false;
+      let cloudRevision = 0;
+      const entryMode = location.pathname.startsWith("/ipad")
+        ? "ipad"
+        : location.pathname.startsWith("/phone")
+          ? "phone"
+          : window.matchMedia("(max-width: 700px)").matches
+            ? "phone"
+            : "ipad";
+      document.body.classList.add(`entry-${entryMode}`);
+      const deviceId = (() => {
+        try {
+          const key = `${STORAGE_KEY}-device`;
+          let value = localStorage.getItem(key);
+          if (!value) {
+            value = uid("device");
+            localStorage.setItem(key, value);
+          }
+          return value;
+        } catch {
+          return uid("device");
+        }
+      })();
 
       const $ = (selector, root = document) => root.querySelector(selector);
       const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
@@ -4257,6 +4442,9 @@
           merged.tasks = Array.isArray(saved.tasks) ? saved.tasks : base.tasks;
           merged.wishes = Array.isArray(saved.wishes) ? saved.wishes : base.wishes;
           merged.history = Array.isArray(saved.history) ? saved.history : base.history;
+          merged.deletedTaskIds = Array.isArray(saved.deletedTaskIds) ? saved.deletedTaskIds.filter((id) => typeof id === "string") : [];
+          merged.deletedWishIds = Array.isArray(saved.deletedWishIds) ? saved.deletedWishIds.filter((id) => typeof id === "string") : [];
+          merged.deletedTransactionIds = Array.isArray(saved.deletedTransactionIds) ? saved.deletedTransactionIds.filter((id) => typeof id === "string") : [];
           merged.balance = roundMoney(merged.balance || 0);
           merged.stars = Math.max(0, Number(merged.stars) || 0);
           merged.child.customAvatar = safeCustomAvatar(merged.child.customAvatar);
@@ -4270,12 +4458,138 @@
         }
       }
 
-      function saveState() {
+      function setSyncStatus(mode, text, title = text) {
+        const pill = $("#syncPill");
+        const label = $("#syncText");
+        if (!pill || !label) return;
+        pill.classList.toggle("online", mode === "online");
+        pill.classList.toggle("syncing", mode === "syncing");
+        pill.classList.toggle("error", mode === "error");
+        pill.title = title;
+        label.textContent = text;
+      }
+
+      function persistLocalState() {
         try {
           localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
         } catch (error) {
           showToast("浏览器暂时无法保存，可能是存储空间已满。");
           console.warn("保存本地数据失败。", error);
+        }
+      }
+
+      function saveState(options = {}) {
+        persistLocalState();
+        if (cloudEnabled && options.sync !== false) {
+          cloudDirty = true;
+          cloudRevision += 1;
+          scheduleCloudSync();
+        }
+      }
+
+      function scheduleCloudSync(delay = 350) {
+        if (!cloudEnabled) return;
+        clearTimeout(cloudSyncTimer);
+        setSyncStatus("syncing", "同步中");
+        cloudSyncTimer = setTimeout(() => syncWithCloud(), delay);
+      }
+
+      function replaceStateFromCloud(remoteState, remoteVersion) {
+        if (!remoteState || typeof remoteState !== "object") return;
+        state = remoteState;
+        cloudVersion = Number(remoteVersion) || cloudVersion;
+        cloudDirty = false;
+        persistLocalState();
+        renderAll();
+      }
+
+      async function syncWithCloud() {
+        if (!cloudEnabled || cloudSyncBusy) return;
+        cloudSyncBusy = true;
+        const revision = cloudRevision;
+        try {
+          const response = await fetch("/api/sync", {
+            method: "POST",
+            credentials: "same-origin",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ state, deviceId })
+          });
+          if (response.status === 401) {
+            cloudEnabled = false;
+            setSyncStatus("error", "专用入口", "请使用发送给设备的专用入口重新打开");
+            return;
+          }
+          if (!response.ok) throw new Error(`同步失败：${response.status}`);
+          const result = await response.json();
+          if (revision === cloudRevision) {
+            replaceStateFromCloud(result.state, result.version);
+            setSyncStatus("online", "已同步", "iPad 和手机正在共用同一份账本");
+          } else {
+            scheduleCloudSync(80);
+          }
+        } catch (error) {
+          console.warn("云端同步失败，数据仍保留在本机。", error);
+          setSyncStatus("error", "本机", "暂时无法连接云端，数据会在恢复网络后同步");
+        } finally {
+          cloudSyncBusy = false;
+        }
+      }
+
+      async function pollCloudState() {
+        if (!cloudEnabled || cloudSyncBusy || cloudDirty || document.hidden) return;
+        try {
+          const response = await fetch("/api/state", {
+            credentials: "same-origin",
+            cache: "no-store"
+          });
+          if (response.status === 401) {
+            cloudEnabled = false;
+            setSyncStatus("error", "专用入口", "请使用发送给设备的专用入口重新打开");
+            return;
+          }
+          if (!response.ok) throw new Error(`读取同步数据失败：${response.status}`);
+          const result = await response.json();
+          if (result.state && Number(result.version) > cloudVersion) {
+            replaceStateFromCloud(result.state, result.version);
+          }
+          setSyncStatus("online", "已同步", "iPad 和手机正在共用同一份账本");
+        } catch (error) {
+          console.warn("暂时无法读取云端账本。", error);
+          setSyncStatus("error", "本机", "暂时无法连接云端，稍后会自动重试");
+        }
+      }
+
+      async function initCloudSync() {
+        if (!/^https?:$/.test(window.location.protocol)) {
+          setSyncStatus("error", "本机", "当前是本地文件，未启用家庭同步");
+          return;
+        }
+        setSyncStatus("syncing", "连接中");
+        try {
+          const response = await fetch("/api/state", {
+            credentials: "same-origin",
+            cache: "no-store"
+          });
+          if (response.status === 401) {
+            setSyncStatus("error", "专用入口", "请使用发送给设备的专用入口重新打开");
+            return;
+          }
+          if (!response.ok) throw new Error(`初始化同步失败：${response.status}`);
+          const result = await response.json();
+          cloudEnabled = true;
+          if (result.state) {
+            replaceStateFromCloud(result.state, result.version);
+            setSyncStatus("online", "已同步", "iPad 和手机正在共用同一份账本");
+          } else {
+            cloudDirty = true;
+            cloudRevision += 1;
+            await syncWithCloud();
+          }
+          clearInterval(cloudPollTimer);
+          cloudPollTimer = setInterval(pollCloudState, 4000);
+        } catch (error) {
+          console.warn("无法连接家庭共享账本，继续使用本机数据。", error);
+          setSyncStatus("error", "本机", "暂时无法连接云端，数据会保留在本机");
         }
       }
 
@@ -4795,10 +5109,16 @@
         return transaction;
       }
 
+      function rememberDeleted(listName, id) {
+        if (!Array.isArray(state[listName])) state[listName] = [];
+        if (!state[listName].includes(id)) state[listName].push(id);
+      }
+
       function removeTransaction(transactionId) {
         const index = state.history.findIndex((item) => item.id === transactionId);
         if (index < 0) return null;
         const [removed] = state.history.splice(index, 1);
+        rememberDeleted("deletedTransactionIds", transactionId);
         state.balance = roundMoney(state.balance - Number(removed.amount || 0));
         if (removed.starsEarned) {
           state.stars = Math.max(0, state.stars - Number(removed.starsEarned));
@@ -5322,6 +5642,7 @@
           danger: true,
           onConfirm: () => {
             state.tasks = state.tasks.filter((item) => item.id !== task.id);
+            rememberDeleted("deletedTaskIds", task.id);
             if (state.daily.rewards[task.id]) delete state.daily.rewards[task.id];
             if (state.daily.penalties[task.id]) delete state.daily.penalties[task.id];
             saveState();
@@ -5344,6 +5665,7 @@
           danger: true,
           onConfirm: () => {
             state.wishes = state.wishes.filter((item) => item.id !== wish.id);
+            rememberDeleted("deletedWishIds", wish.id);
             saveState();
             renderAll();
             closeModal();
@@ -5496,7 +5818,10 @@
       });
 
       document.addEventListener("visibilitychange", () => {
-        if (!document.hidden) ensureToday();
+        if (!document.hidden) {
+          ensureToday();
+          pollCloudState();
+        }
       });
 
       window.setInterval(() => {
@@ -5505,6 +5830,19 @@
 
       saveState();
       renderAll();
+      initCloudSync();
+
+      window.addEventListener("beforeunload", () => {
+        if (!cloudEnabled || !cloudDirty) return;
+        try {
+          navigator.sendBeacon(
+            "/api/sync",
+            new Blob([JSON.stringify({ state, deviceId })], { type: "application/json" })
+          );
+        } catch {
+          // The regular sync queue will retry on the next visit.
+        }
+      });
     })();
   </script>
 </body>

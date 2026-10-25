@@ -1,6 +1,6 @@
 # 星星钱罐
 
-给孩子使用的零花钱与习惯养成应用，采用单页 HTML，可直接在浏览器或主屏幕中运行。
+给孩子使用的零花钱与习惯养成应用。iPad 和手机使用同一个家庭账本，数据通过 Render Web Service 和 PostgreSQL 同步。
 
 ## 功能
 
@@ -12,11 +12,33 @@
 - 愿望清单、价格、进度和愿望实现记录
 - 星光等级、连续打卡、动画和音效反馈
 - iPad、手机和桌面自适应布局
+- `/ipad` 和 `/phone` 两个入口，共用同一份云端数据
+- 断网时先保存本机，恢复网络后自动合并同步
 
 ## 本地使用
 
-直接用浏览器打开 `index.html` 即可。数据保存在当前浏览器的本地存储中。
+不连接数据库时，可以直接打开 `index.html` 或运行 `npm start`，应用会使用本机存储和内存同步。
+
+连接 PostgreSQL：
+
+```bash
+DATABASE_URL="postgresql://..." ACCESS_TOKEN="自定义访问密钥" npm start
+```
+
+首次访问：
+
+```text
+http://localhost:10000/enter?key=自定义访问密钥&device=ipad
+http://localhost:10000/enter?key=自定义访问密钥&device=phone
+```
 
 ## 部署
 
-仓库包含 `render.yaml`，可在 Render 中作为静态站点部署。发布目录为仓库根目录，访问任意路径时返回 `index.html`。
+仓库包含 `render.yaml`，用于创建 Node Web Service 和 PostgreSQL 数据库。线上服务必须设置：
+
+- `DATABASE_URL`
+- `ACCESS_TOKEN`
+- `FAMILY_ID`
+- `NODE_ENV=production`
+
+数据库连接成功后会自动创建 `star_piggy_bank_state` 表。当前版本固定为一个家庭、无注册登录；后续商业化时可在现有 `family_id` 基础上增加账号和家庭成员。
